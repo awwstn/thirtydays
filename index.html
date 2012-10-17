@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+
+<html>
+	<head>
+		<title> 30 Days Ago </title>
+		<link href="bootstrap/css/bootstrap.min.css" rel="stylesheet">
+	
+	</head>
+
+	<body>
+		<div class="navbar">
+  <div class="navbar-inner">
+    <a class="brand" href="#">30 Days Ago</a>
+    <ul class="nav">
+      <li class="active"><a href="#">Home</a></li>
+      <li><a href="http://singly.com">Singly</a></li>
+      <li><a href="http://blog.bikeridr.com/wp-content/uploads/2010/05/PonyBike.jpg">PonyBike</a></li>
+    </ul>
+  </div>
+</div>
+		<div class="container">
+			<span style="float:left; dislay:inline;"id="profile"></span>
+			<h1 style="display:inline">Welcome to <strong>30 Days Ago!</strong><br>
+			<h2 style="display:inline; font-style:italic;"><br><span id="name"></span></h2><br><br>
+			<div id="stuff1">
+				<span style="display:block">Start by authorizing these services:
+				 <div style="display:inline" class="btn-group">
+  <a href="https://api.singly.com/oauth/authorize?client_id=423378c6a67ce35764f0e1d1a882607a&redirect_uri=https://dl.dropbox.com/u/17985112/tta/index.html&service=foursquare&response_type=token"><button class="btn">Foursquare</button></a>
+  <a href="https://api.singly.com/oauth/authorize?client_id=423378c6a67ce35764f0e1d1a882607a&redirect_uri=https://dl.dropbox.com/u/17985112/tta/index.html&service=fitbit&response_type=token"><button class="btn">FitBit</button></a>
+  <a href="https://api.singly.com/oauth/authorize?client_id=423378c6a67ce35764f0e1d1a882607a&redirect_uri=https://dl.dropbox.com/u/17985112/tta/index.html&service=instagram&response_type=token"><button class="btn">Instagram</button></a>
+  <a href="https://api.singly.com/oauth/authorize?client_id=423378c6a67ce35764f0e1d1a882607a&redirect_uri=https://dl.dropbox.com/u/17985112/tta/index.html&service=facebook&response_type=token"><button class="btn">Facebook</button></a>
+</div>
+
+			<h3>Then, you can see where you checked in, how many steps you took and how many hours you slept a month ago today!</h3><br>
+			</div>
+			<div id="stuff2">
+				<h2>Here's what you did 30 days ago, on <span id="formatted-date"></span>:</h2>
+				<h3>Checked in at:</h3>
+				<ul id="checkins" style="font-size: 12px"></ul>
+				<h3>Took <span id="steps"></span> steps and slept <span id="sleep"></span> hours.</h2>
+				<h2>And, here are your photos from that day:</h2>
+				<h2><span id="photos"></span></h2>
+				<h1>Better luck next month!</h1>
+			</div>
+		</div>
+	</body>
+
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+	<script src="https://dl.dropbox.com/u/17985112/tta/jquery.ba-bbq.js"></script>
+	<script src="moment.min.js"></script>
+	<script src="bootstrap/js/bootstrap.min.js"></script>
+	<script src="cookie/jquery.cookie.js"></script>
+	<script>
+
+		$(function(){
+			var start=moment().subtract('months', 1).sod();
+			var end=moment().subtract('months' , 1).eod();
+
+			var formattedDate=start.format("dddd, MMMM Do YYYY");
+			$("#formatted-date").html(formattedDate);
+
+			if (jQuery.param.fragment().length != 0){
+			$.cookie('access_token', jQuery.param.fragment(), { expires: 7 });
+			}
+
+			else if (jQuery.param.fragment().length === 0)
+			{}
+
+			var baseurl="https://api.singly.com/";
+			var access_token=$.cookie("access_token")
+			var checkins=baseurl + "types/checkins?" + access_token + "&since=" + start.valueOf() + "&until=" + end.valueOf();
+			var name=baseurl + "v0/profile?" + access_token;
+			var sleep=baseurl + "v0/services/fitbit/sleep?" + access_token + "&since=" + start.valueOf() + "&until=" + end.valueOf();
+			var steps=baseurl + "v0/services/fitbit/activities?" + access_token + "&since=" + start.valueOf() + "&until=" + end.valueOf();
+			var photos=baseurl + "v0/types/photos?" + access_token + "&since=" + start.valueOf() + "&until=" + end.valueOf();
+			var profile=baseurl + "v0/profile?" + access_token;
+			
+			if (jQuery.param.fragment() === ""){
+				 $("#stuff2").hide();
+				}
+			else if (jQuery.param.fragment() != ""){
+				$("#stuff1").hide();
+			}
+			
+
+			$.ajax({
+				url: profile,
+				cache: false
+				}).done(function( profile ){
+				$("#profile").append("<img width=\"150px\" src=\"" + profile.thumbnail_url + "\" class=\"img-circle\">");
+			});
+
+			$.ajax({
+			 	url: photos,
+			  	cache: false
+			}).done(function( photos ) {
+				photos.forEach(function(photo){
+				$("#photos").append("<img width=\"250px\" src=\"" + photo.oembed.url + "\">");
+				
+			});
+			});
+
+			$.ajax({
+			 	url: steps,
+			  	cache: false
+			}).done(function( data ) {
+				$("#steps").append(data[0].data.summary.steps);
+			});
+
+			$.ajax({
+			 	url: sleep,
+			  	cache: false
+			}).done(function( data ) {
+				$("#sleep").append((data[0].data.summary.totalMinutesAsleep/60).toFixed(1));
+			});
+
+			$.ajax({
+			 	url: checkins,
+			  	cache: false
+			}).done(function( data ) {
+				data.forEach(function( datum ){
+					if (datum.data.type === "checkin"){
+					$("#checkins").append("<li>" + "<a href=\"" + datum.data.venue.url + "\">" + datum.oembed.title + "</a>" + "</li>")
+					}
+					else if (datum.data.type === "image"){
+					$("#checkins").append("<li>" + "<a href=\"https://www.google.com/search?sugexp=chrome,mod=0&sourceid=chrome&ie=UTF-8&q=" + datum.oembed.title + "\">" + datum.oembed.title + "</a> </li>")
+					}
+					console.log(checkins)
+					})
+				});
+
+			$.ajax({
+			 	url: name,
+			  	cache: false
+			}).done(function( data ) {
+				$("#name").append(data.name);
+			});
+
+
+		});
+
+
+	</script>
+
+</html>
